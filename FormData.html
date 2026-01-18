@@ -1,0 +1,95 @@
+document.getElementById('promoForm').onsubmit = async (e) => {
+    e.preventDefault();
+
+    // 1. FormData yaratish (Rasm va matnni bitta qutiga solish)
+    const formData = new FormData();
+    formData.append('title', document.getElementById('promoTitle').value);
+    formData.append('subtitle', document.getElementById('promoSub').value);
+    
+    // 2. Rasmni olish
+    const imageFile = document.getElementById('promoImage').files[0];
+    if (imageFile) {
+        formData.append('image', imageFile);
+    }
+
+    const csrftoken = getCookie('csrftoken');
+
+    // 3. AWS Serverga yuborish
+    try {
+        const response = await fetch('/api/promos/', { // API manzilingiz
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrftoken
+                // Eslatma: FormData ishlatganda 'Content-Type' yozilmaydi!
+            },
+            body: formData
+        });
+
+        if (response.ok) {
+            alert("Aksiya muvaffaqiyatli qo'shildi!");
+            location.reload();
+        }
+    } catch (err) {
+        alert("Xatolik yuz berdi!");
+    }
+};
+ // admin_custom.html ichidagi &lt;script&gt; tegiga qo'shing
+ document.getElementById('promoForm').onsubmit = async (e) => {
+    e.preventDefault();
+
+    // 1. FormData obyekti - bu HTML va Python o'rtasidagi "konvert"
+    const formData = new FormData();
+    
+    // 2. Konvertga ma'lumotlarni solamiz
+    formData.append('title', document.getElementById('promoTitle').value);
+    formData.append('subtitle', document.getElementById('promoSub').value);
+    
+    const imageInput = document.getElementById('promoImage');
+    if (imageInput.files[0]) {
+        formData.append('image', imageInput.files[0]); // Rasmni qo'shish
+    }
+
+    // 3. AWS serveriga yuborish
+    try {
+        const response = await fetch('/api/promos/', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken') // Xavfsizlik uchun
+            },
+            body: formData // Content-Type yozish shart emas, FormData o'zi hal qiladi
+        });
+
+        if (response.ok) {
+            alert("Aksiya muvaffaqiyatli rasmilashtirildi!");
+            location.reload();
+        }
+    } catch (error) {
+        console.error("Xatolik:", error);
+    }
+};
+document.getElementById('promoForm').onsubmit = async (e) => {
+    e.preventDefault();
+    
+    // FormData - rasm va matnni bitta paket qiladi
+    let fd = new FormData(); 
+    fd.append('title', document.getElementById('p_title').value);
+    fd.append('subtitle', document.getElementById('p_sub').value);
+    
+    let imgFile = document.getElementById('p_image').files[0];
+    if (imgFile) {
+        fd.append('image', imgFile);
+    }
+
+    const response = await fetch('/api/orders/promos/', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken') // Xavfsizlik uchun
+        },
+        body: fd // Content-Type ni o'zi avtomat qo'yadi
+    });
+
+    if (response.ok) {
+        alert("Aksiya muvaffaqiyatli rasmilashtirildi!");
+        location.reload();
+    }
+};

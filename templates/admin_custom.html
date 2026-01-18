@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <title>Admin Panel | GGSHOP</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="bg-slate-900 text-white min-h-screen">
+    <div class="container mx-auto p-8">
+        <div class="flex justify-between items-center mb-10">
+            <h1 class="text-3xl font-bold text-yellow-500 italic">GG<span class="text-pink-500">SHOP</span> Admin</h1>
+            <a href="/" class="text-blue-400 hover:text-blue-300 underline flex items-center gap-2">
+                <i class="fa-solid fa-arrow-left"></i> Saytga qaytish
+            </a>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-10">
+            <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-2xl">
+                <h2 class="text-xl font-bold mb-6 flex items-center gap-2">
+                    <i class="fa-solid fa-plus-circle text-green-500"></i> Yangi Mahsulot Qo'shish
+                </h2>
+                <form id="productForm" class="space-y-4">
+                    <input type="text" id="name" placeholder="Mahsulot nomi" required 
+                           class="w-full p-3 bg-slate-700 rounded border border-slate-600 outline-none focus:border-pink-500 transition">
+                    
+                    <textarea id="desc" placeholder="Mahsulot haqida tavsif" 
+                              class="w-full p-3 bg-slate-700 rounded border border-slate-600 h-24 outline-none focus:border-pink-500 transition"></textarea>
+                    
+                    <div class="flex gap-4">
+                        <input type="number" id="price" placeholder="Narxi (LZS)" required 
+                               class="w-full p-3 bg-slate-700 rounded border border-slate-600 outline-none focus:border-pink-500 transition">
+                        <input type="number" id="stock" placeholder="Ombordagi soni" required 
+                               class="w-full p-3 bg-slate-700 rounded border border-slate-600 outline-none focus:border-pink-500 transition">
+                    </div>
+
+                    <div class="bg-slate-700 p-3 rounded border border-dashed border-slate-500">
+                        <label class="block text-sm text-slate-400 mb-2">Mahsulot rasmi:</label>
+                        <input type="file" id="image-input" accept="image/*" class="w-full text-sm text-slate-300">
+                    </div>
+                    
+                    <button type="submit" class="w-full bg-pink-600 py-3 rounded-lg font-bold hover:bg-pink-500 transform active:scale-95 transition shadow-lg">
+                        BAZAGA SAQLASH
+                    </button>
+                </form>
+            </div>
+
+            <div class="space-y-6">
+                <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 shadow-xl">
+                    <h2 class="text-xl font-bold mb-6 text-blue-400 flex items-center gap-2">
+                        <i class="fa-solid fa-chart-line"></i> Tezkor Statistika
+                    </h2>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="bg-slate-700 p-6 rounded-xl text-center border border-slate-600">
+                            <p class="text-sm text-slate-400 uppercase tracking-widest">Mahsulotlar</p>
+                            <p id="total-prods" class="text-4xl font-black text-white mt-2">0</p>
+                        </div>
+                        <div class="bg-slate-700 p-6 rounded-xl text-center border border-slate-600">
+                            <p class="text-sm text-slate-400 uppercase tracking-widest">Kategoriyalar</p>
+                            <p id="total-cats" class="text-4xl font-black text-white mt-2">0</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-blue-900/20 p-4 rounded-lg border border-blue-500/30">
+                    <p class="text-sm text-blue-300">
+                        <i class="fa-solid fa-circle-info"></i> 
+                        <b>Eslatma:</b> Mahsulot qo'shishdan oldin Django bazasida kamida bitta kategoriya yaratilgan bo'lishi kerak.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Kukidan CSRF tokenni olish funksiyasi (Xavfsizlik uchun)
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        // Statistikani yuklash
+        async function getStats() {
+            try {
+                const [pRes, cRes] = await Promise.all([
+                    fetch('/api/products/products/'),
+                    fetch('/api/products/categories/')
+                ]);
+                const pData = await pRes.json();
+                const cData = await cRes.json();
+                document.getElementById('total-prods').innerText = pData.count || (Array.isArray(pData) ? pData.length : 0);
+                document.getElementById('total-cats').innerText = cData.length;
+            } catch (err) { console.error("Statistika yuklanmadi:", err); }
+        }
+
+        // Mahsulot yuborish (POST)
+        document.getElementById('productForm').onsubmit = async (e) => {
+            e.preventDefault();
+            
+            const formData = new FormData();
+            formData.append('name', document.getElementById('name').value);
+            formData.append('description', document.getElementById('desc').value);
+            formData.append('price', document.getElementById('price').value);
+            formData.append('stock', document.getElementById('stock').value);
+            formData.append('category', 1); // Bazadagi kategoriya ID-si
+
+            const imageFile = document.getElementById('image-input').files[0];
+            if (imageFile) { formData.append('image', imageFile); }
+
+            const csrftoken = getCookie('csrftoken');
+
+            try {
+                const response = await fetch('http://127.0.0.1:8000/api/products/products/', {
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': csrftoken },
+                    body: formData 
+                });
+
+                if (response.ok) {
+                    alert("✅ GGSHOP: Mahsulot bazaga muvaffaqiyatli qo'shildi!");
+                    location.reload(); 
+                } else {
+                    const error = await response.json();
+                    alert("❌ Xatolik: " + JSON.stringify(error));
+                }
+            } catch (err) {
+                alert("🌐 Server bilan aloqa yo'q! yoniqligini tekshiring.");
+            }
+        };
+
+        getStats();
+    </script>
+</body>
+</html>
+<canvas id="salesChart" width="400" height="200"></canvas>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    const ctx = document.getElementById('salesChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: ['Dush', 'Sesh', 'Chor', 'Pay', 'Jum', 'Shan', 'Yak'],
+            datasets: [{
+                label: 'Sotilgan mahsulotlar',
+                data: [12, 19, 3, 5, 2, 3, 10],
+                borderColor: '#ff007f',
+                tension: 0.1
+            }]
+        }
+    });
+</script>
+document.getElementById('productForm').onsubmit = async (e) => {
+    e.preventDefault();
+    
+    // 1. FormData obyektini yaratish
+    const formData = new FormData();
+    
+    // 2. Matnli ma'lumotlarni qo'shish
+    formData.append('name', document.getElementById('name').value);
+    formData.append('description', document.getElementById('desc').value);
+    formData.append('price', document.getElementById('price').value);
+    formData.append('stock', document.getElementById('stock').value);
+    formData.append('category', 1); // Kategoriya ID-si
+
+    // 3. Rasmni qo'shish (Input-dan faylni olish)
+    const imageFile = document.getElementById('image-input').files[0];
+    if (imageFile) {
+        formData.append('image', imageFile);
+    }
+
+    // 4. CSRF tokenni olish
+    const csrftoken = getCookie('csrftoken');
+
+    try {
+        const response = await fetch('http://sizning-aws-ip/api/products/products/', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrftoken 
+                // Diqqat: Content-Type sarlavhasini yozmang, FormData o'zi avtomat qo'yadi
+            },
+            body: formData 
+        });
+
+        if (response.ok) {
+            alert("Muvaffaqiyatli saqlandi!");
+            location.reload();
+        }
+    } catch (err) {
+        console.error("Xatolik:", err);
+    }
+};  
+<div class="bg-slate-800 p-6 rounded-xl border border-slate-700 mt-10">
+    <h2 class="text-xl font-bold mb-6 text-yellow-500">🔥 Yangi Aksiya Qo'shish</h2>
+    <form id="promoForm" class="space-y-4">
+        <input type="text" id="promoTitle" placeholder="Aksiya sarlavhasi" class="w-full p-3 bg-slate-700 rounded border border-slate-600">
+        <textarea id="promoSub" placeholder="Aksiya tavsifi" class="w-full p-3 bg-slate-700 rounded border border-slate-600"></textarea>
+        <input type="file" id="promoImage" class="block w-full text-sm text-slate-400">
+        <button type="submit" class="w-full bg-yellow-600 py-3 rounded-lg font-bold">AKSIYANI SAQLASH</button>
+    </form>
+</div>
+<div class="bg-slate-900 p-6 rounded-lg border border-pink-500 mt-5">
+    <h3 class="text-white text-lg mb-4">🎁 Yangi Aksiya Qo'shish</h3>
+    <form id="promoForm" enctype="multipart/form-data">
+        <input type="text" id="promoTitle" placeholder="Aksiya sarlavhasi" class="w-full p-2 mb-2 bg-slate-800 text-white rounded">
+        <textarea id="promoSub" placeholder="Aksiya matni" class="w-full p-2 mb-2 bg-slate-800 text-white rounded"></textarea>
+        <label class="text-gray-400 block mb-2">Banner rasmini tanlang:</label>
+        <input type="file" id="promoImage" accept="image/*" class="text-white mb-4">
+        <button type="submit" class="bg-pink-600 text-white px-6 py-2 rounded-full hover:bg-pink-700 transition">
+            Aksiyani Joylash
+        </button>
+    </form>
+</div>
+async function savePromo() {
+    const fd = new FormData(); // Konvert yaratish
+    
+    // Matnlarni qo'shish
+    fd.append('title', document.getElementById('promoTitle').value);
+    fd.append('subtitle', document.getElementById('promoSub').value);
+    fd.append('button_text', "BATAFSIL");
+    
+    // Rasmni qo'shish
+    const imgFile = document.getElementById('promoImage').files[0];
+    if (imgFile) {
+        fd.append('image', imgFile);
+    }
+
+    // AWS Serverga jo'natish
+    const response = await fetch('/api/orders/promos/', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCookie('csrftoken') // Bu juda muhim!
+        },
+        body: fd // 'Content-Type' ni o'zingiz yozmang, brauzer o'zi qo'shadi
+    });
+
+    if (response.ok) {
+        alert("Aksiya muvaffaqiyatli saqlandi!");
+    }
+}
+<div class="p-6 bg-slate-800 rounded-xl border-2 border-pink-500 mt-8">
+    <h2 class="text-white font-bold mb-4">🎁 Yangi Aksiya Banneri Qo'shish</h2>
+    <form id="promoForm">
+        <input type="text" id="p_title" placeholder="Sarlavha" class="w-full p-2 mb-2 bg-slate-700 text-white rounded">
+        <textarea id="p_sub" placeholder="Tavsif" class="w-full p-2 mb-2 bg-slate-700 text-white rounded"></textarea>
+        <input type="file" id="p_image" class="text-white mb-4 block w-full">
+        <button type="submit" class="w-full bg-pink-600 py-3 rounded-lg font-bold text-white hover:bg-pink-700">
+            BAZAGA SAQLASH
+        </button>
+    </form>
+</div>
+<select id="p_category">
+    <option value="1">Noutbuklar</option>
+</select>
+
+<select id="p_category" class="w-full p-3 bg-slate-800 border border-gray-700 rounded text-white focus:outline-none focus:border-pink-500" required>
+    <option value="">Kategoriyani tanlang *</option>
+    <option value="noutbuk">Noutbuklar</option>
+    <option value="komplekt">Komplektlar</option>
+    <option value="monitor">Monitorlar</option>
+    <option value="boshqa">Boshqa</option>
+</select>
+<div class="mb-4">
+    <label class="block text-gray-400 text-sm mb-2">Mahsulot turi:</label>
+    <select id="p_category" class="w-full p-3 bg-slate-800 border border-gray-700 rounded text-white focus:outline-none focus:border-pink-500">
+        <option value="noutbuk">Noutbuklar</option>
+        <option value="komplekt">Komplektlar</option>
+        <option value="monitor">Monitorlar</option>
+        <option value="boshqa">Boshqa</option>
+    </select>
+</div>
